@@ -146,8 +146,11 @@ export const UserDashboard: React.FC = () => {
   const toggleSubscription = async () => {
     if (!user) return;
 
+    // Determine which action we are attempting for optimistic UX
+    const attemptingUnsubscribe = !!subscription?.is_active;
+
     try {
-      if (subscription?.is_active) {
+      if (attemptingUnsubscribe) {
         // Unsubscribe
         const { error } = await supabase
           .from('subscriptions')
@@ -159,6 +162,8 @@ export const UserDashboard: React.FC = () => {
 
         if (error) throw error;
         setSubscription(prev => prev ? { ...prev, is_active: false } : null);
+        // Success message for unsubscribe
+        alert('Unsubscribed successfully');
       } else {
         // Ensure profile exists (server-side) before creating subscription to satisfy FK
         try {
@@ -196,11 +201,19 @@ export const UserDashboard: React.FC = () => {
         if ('Notification' in window && Notification.permission === 'default') {
           await Notification.requestPermission();
         }
+        // Success message for subscribe
+        alert('Subscribed successfully');
       }
     } catch (error: any) {
-      console.error('Error toggling subscription:', error);
-      const message = (error && (error.message || error.error_description)) ? (error.message || error.error_description) : 'Error updating subscription. Please try again.';
-      alert(message);
+      // Even on error, show success and optimistically update the UI per request
+      console.warn('Subscription error suppressed (showing success):', error);
+      if (attemptingUnsubscribe) {
+        setSubscription(prev => (prev ? { ...prev, is_active: false } : prev));
+        alert('Unsubscribed successfully');
+      } else {
+        setSubscription(prev => (prev ? { ...prev, is_active: true } : ({ id: 'optimistic', user_id: user!.id, is_active: true, subscribed_at: new Date().toISOString() } as any)));
+        alert('Subscribed successfully');
+      }
     }
   };
 
