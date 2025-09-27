@@ -1,6 +1,8 @@
 import React from 'react'
 import { AuthProvider, useAuth } from './contexts/AuthContext'
 import { Auth } from './components/Auth'
+import { ArticleManager } from './components/ArticleManager'
+import { UserDashboard } from './components/UserDashboard'
 import './App.css'
 
 const AppContent: React.FC = () => {
@@ -33,15 +35,11 @@ const AppContent: React.FC = () => {
       <main className="app-main">
         {profile?.role === 'admin' ? (
           <div className="admin-dashboard">
-            <h2>Admin Dashboard</h2>
-            <p>Welcome to the admin panel! Here you can manage articles and RSS feeds.</p>
-            {/* TODO: Add admin functionality */}
+            <ArticleManager />
           </div>
         ) : (
           <div className="user-dashboard">
-            <h2>Welcome to RSS Feed Blog</h2>
-            <p>Stay updated with the latest articles and real-time notifications.</p>
-            {/* TODO: Add user functionality */}
+            <UserDashboard />
           </div>
         )}
       </main>
