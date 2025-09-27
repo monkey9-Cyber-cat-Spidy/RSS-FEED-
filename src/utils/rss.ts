@@ -1,5 +1,5 @@
 // RSS feed generation utilities
-import { Article } from '../lib/supabase';
+import type { Article } from '../lib/supabase';
 
 export interface RSSItem {
   id: string;

@@ -3,7 +3,7 @@ import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { generateRssAndDownload } from '../utils/rss';
 
-interface Article {
+interface ArticleWithProfile {
   id: string;
   title: string;
   content: string;
@@ -19,10 +19,10 @@ interface Article {
 
 export const ArticleManager: React.FC = () => {
   const { user, profile } = useAuth();
-  const [articles, setArticles] = useState<Article[]>([]);
+  const [articles, setArticles] = useState<ArticleWithProfile[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
-  const [editingArticle, setEditingArticle] = useState<Article | null>(null);
+  const [editingArticle, setEditingArticle] = useState<ArticleWithProfile | null>(null);
   const [formData, setFormData] = useState({
     title: '',
     content: '',
@@ -102,7 +102,7 @@ export const ArticleManager: React.FC = () => {
   };
 
   // Handle edit
-  const handleEdit = (article: Article) => {
+  const handleEdit = (article: ArticleWithProfile) => {
     setEditingArticle(article);
     setFormData({
       title: article.title,
@@ -131,7 +131,7 @@ export const ArticleManager: React.FC = () => {
   };
 
   // Toggle publish status
-  const togglePublish = async (article: Article) => {
+  const togglePublish = async (article: ArticleWithProfile) => {
     try {
       const { error } = await supabase
         .from('articles')
@@ -147,7 +147,21 @@ export const ArticleManager: React.FC = () => {
 
   // Handle RSS download
   const handleDownloadRss = () => {
-    const publishedArticles = articles.filter(article => article.is_published);
+    const publishedArticles = articles
+      .filter(article => article.is_published)
+      .map(article => ({
+        ...article,
+        user_profiles: article.user_profiles ? {
+          id: '',
+          email: article.user_profiles.email,
+          username: '',
+          display_name: article.user_profiles.display_name,
+          role: 'user' as const,
+          avatar_url: undefined,
+          created_at: '',
+          updated_at: ''
+        } : undefined
+      }));
     generateRssAndDownload(publishedArticles, 'RSS Feed Blog');
   };
 

@@ -1,11 +1,26 @@
 import React, { useState, useEffect } from 'react';
-import { supabase, Article, Subscription, Notification } from '../lib/supabase';
+import { supabase } from '../lib/supabase';
+import type { Article, Subscription, Notification } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { generateRssAndDownload } from '../utils/rss';
 
+interface ArticleWithProfile {
+  id: string;
+  title: string;
+  content: string;
+  author_id: string;
+  published_at: string;
+  updated_at: string;
+  is_published: boolean;
+  user_profiles?: {
+    display_name: string;
+    email: string;
+  };
+}
+
 export const UserDashboard: React.FC = () => {
-  const { user, profile } = useAuth();
-  const [articles, setArticles] = useState<Article[]>([]);
+  const { user } = useAuth();
+  const [articles, setArticles] = useState<ArticleWithProfile[]>([]);
   const [subscription, setSubscription] = useState<Subscription | null>(null);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
@@ -164,7 +179,20 @@ export const UserDashboard: React.FC = () => {
 
   // Handle RSS download
   const handleDownloadRss = () => {
-    generateRssAndDownload(articles, 'RSS Feed Blog');
+    const convertedArticles = articles.map(article => ({
+      ...article,
+      user_profiles: article.user_profiles ? {
+        id: '',
+        email: article.user_profiles.email,
+        username: '',
+        display_name: article.user_profiles.display_name,
+        role: 'user' as const,
+        avatar_url: undefined,
+        created_at: '',
+        updated_at: ''
+      } : undefined
+    }));
+    generateRssAndDownload(convertedArticles, 'RSS Feed Blog');
   };
 
   if (loading) {
