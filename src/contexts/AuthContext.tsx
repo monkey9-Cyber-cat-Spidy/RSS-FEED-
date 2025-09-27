@@ -81,6 +81,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   useEffect(() => {
     let isMounted = true
+    // Failsafe: never keep the UI stuck in loading forever
+    const timeoutId = setTimeout(() => {
+      if (isMounted) {
+        console.warn('Auth init is taking too long; forcing loading=false after timeout')
+        setLoading(false)
+      }
+    }, 8000)
 
     const init = async () => {
       try {
@@ -101,6 +108,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       } catch (e) {
         console.error('Error initializing auth session:', e)
       } finally {
+        clearTimeout(timeoutId)
         if (isMounted) setLoading(false)
       }
     }
@@ -127,11 +135,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
 
       // Always set loading to false regardless of the event
+      clearTimeout(timeoutId)
       setLoading(false)
     })
 
     return () => {
       isMounted = false
+      clearTimeout(timeoutId)
       subscription.unsubscribe()
     }
   }, [])

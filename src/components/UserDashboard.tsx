@@ -160,30 +160,19 @@ export const UserDashboard: React.FC = () => {
         if (error) throw error;
         setSubscription(prev => prev ? { ...prev, is_active: false } : null);
       } else {
-        // Subscribe or resubscribe
-        if (subscription) {
-          // Reactivate existing subscription
-          const { error } = await supabase
-            .from('subscriptions')
-            .update({ 
-              is_active: true,
-              unsubscribed_at: null
-            })
-            .eq('user_id', user.id);
+        // Subscribe or resubscribe using UPSERT to avoid conflicts/races
+        const { data, error } = await supabase
+          .from('subscriptions')
+          .upsert({ 
+            user_id: user.id, 
+            is_active: true, 
+            unsubscribed_at: null 
+          }, { onConflict: 'user_id' })
+          .select()
+          .single();
 
-          if (error) throw error;
-          setSubscription(prev => prev ? { ...prev, is_active: true } : null);
-        } else {
-          // Create new subscription
-          const { data, error } = await supabase
-            .from('subscriptions')
-            .insert([{ user_id: user.id, is_active: true }])
-            .select()
-            .single();
-
-          if (error) throw error;
-          setSubscription(data);
-        }
+        if (error) throw error;
+        setSubscription(data);
 
         // Request notification permission
         if ('Notification' in window && Notification.permission === 'default') {
