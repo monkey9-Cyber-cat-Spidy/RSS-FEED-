@@ -105,7 +105,8 @@ export const ArticleManager: React.FC = () => {
             title: formData.title,
             content: formData.content,
             author_id: user.id,
-            is_published: formData.is_published
+            is_published: formData.is_published,
+            published_at: formData.is_published ? new Date().toISOString() : null
           }]);
 
         if (error) throw error;
@@ -162,7 +163,10 @@ export const ArticleManager: React.FC = () => {
     try {
       const { error } = await supabase
         .from('articles')
-        .update({ is_published: !article.is_published })
+        .update({ 
+          is_published: !article.is_published,
+          published_at: !article.is_published ? new Date().toISOString() : null
+        })
         .eq('id', article.id);
 
       if (error) throw error;

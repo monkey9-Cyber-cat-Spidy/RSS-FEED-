@@ -80,39 +80,60 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }
 
   useEffect(() => {
-    // Get initial session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session)
-      setUser(session?.user ?? null)
-      
-      if (session?.user) {
-        fetchUserProfile(session.user.id).then(setProfile)
+    let isMounted = true
+
+    const init = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession()
+        if (!isMounted) return
+
+        setSession(session)
+        setUser(session?.user ?? null)
+
+        if (session?.user) {
+          try {
+            const p = await fetchUserProfile(session.user.id)
+            if (isMounted) setProfile(p)
+          } catch (e) {
+            console.error('Error loading user profile during init:', e)
+          }
+        }
+      } catch (e) {
+        console.error('Error initializing auth session:', e)
+      } finally {
+        if (isMounted) setLoading(false)
       }
-      
-      setLoading(false)
-    })
+    }
+
+    init()
 
     // Listen for auth changes
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       console.log('Auth state change:', event, session?.user?.email)
-      
+
       setSession(session)
       setUser(session?.user ?? null)
-      
+
       if (session?.user) {
-        const userProfile = await fetchUserProfile(session.user.id)
-        setProfile(userProfile)
+        try {
+          const userProfile = await fetchUserProfile(session.user.id)
+          setProfile(userProfile)
+        } catch (e) {
+          console.error('Error loading user profile after auth change:', e)
+          setProfile(null)
+        }
       } else {
         setProfile(null)
       }
-      
+
       // Always set loading to false regardless of the event
       setLoading(false)
     })
 
-    return () => subscription.unsubscribe()
+    return () => {
+      isMounted = false
+      subscription.unsubscribe()
+    }
   }, [])
 
   const value: AuthContextType = {
