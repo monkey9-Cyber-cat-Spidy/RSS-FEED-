@@ -52,7 +52,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // Ensure a user_profiles row exists for the authenticated user (needed for FK on subscriptions)
   const ensureUserProfile = async (u: User): Promise<UserProfile | null> => {
     try {
-      // Try to upsert a minimal profile; onConflict by id guarantees id/email uniqueness
+      // Preferred: call SECURITY DEFINER function to bypass RLS safely
+      const { data: rpcData, error: rpcError } = await supabase.rpc('ensure_user_profile')
+      if (!rpcError && rpcData) {
+        return rpcData as unknown as UserProfile
+      }
+
+      // Fallback: try to upsert directly (will work if RLS allows it)
       const email = u.email ?? ''
       const fallback = (email && email.includes('@')) ? email.split('@')[0] : (u.user_metadata?.username || 'user')
       const display = u.user_metadata?.display_name || fallback
@@ -69,7 +75,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         .single()
 
       if (error) {
-        console.error('Error ensuring user profile:', error)
+        console.error('Error ensuring user profile (fallback):', error)
         return null
       }
       return data

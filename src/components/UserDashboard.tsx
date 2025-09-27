@@ -160,8 +160,15 @@ export const UserDashboard: React.FC = () => {
         if (error) throw error;
         setSubscription(prev => prev ? { ...prev, is_active: false } : null);
       } else {
+        // Ensure profile exists (server-side) before creating subscription to satisfy FK
+        try {
+          await supabase.rpc('ensure_user_profile')
+        } catch (e) {
+          // non-fatal; we'll still attempt upsert
+        }
+
         // Subscribe or resubscribe using UPSERT to avoid conflicts/races
-        const { data, error } = await supabase
+        let { data, error } = await supabase
           .from('subscriptions')
           .upsert({ 
             user_id: user.id, 
@@ -170,6 +177,17 @@ export const UserDashboard: React.FC = () => {
           }, { onConflict: 'user_id' })
           .select()
           .single();
+
+        // If FK failed, attempt to create profile then retry once
+        if (error && (error.message?.includes('foreign key') || error.code === '23503')) {
+          try { await supabase.rpc('ensure_user_profile') } catch {}
+          const retry = await supabase
+            .from('subscriptions')
+            .upsert({ user_id: user.id, is_active: true, unsubscribed_at: null }, { onConflict: 'user_id' })
+            .select()
+            .single()
+          data = retry.data as any; error = retry.error as any;
+        }
 
         if (error) throw error;
         setSubscription(data);
