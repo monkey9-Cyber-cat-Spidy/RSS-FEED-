@@ -72,11 +72,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const signOut = async () => {
     const { error } = await supabase.auth.signOut()
-    if (!error) {
-      setUser(null)
-      setProfile(null)
-      setSession(null)
-    }
+    // Don't manually set states here, let the auth state change handler do it
   }
 
   const isAdmin = () => {
@@ -99,7 +95,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // Listen for auth changes
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (_, session) => {
+    } = supabase.auth.onAuthStateChange(async (event, session) => {
+      console.log('Auth state change:', event, session?.user?.email)
+      
       setSession(session)
       setUser(session?.user ?? null)
       
@@ -110,6 +108,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setProfile(null)
       }
       
+      // Always set loading to false regardless of the event
       setLoading(false)
     })
 

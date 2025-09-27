@@ -51,6 +51,29 @@ export const ArticleManager: React.FC = () => {
 
   useEffect(() => {
     fetchArticles();
+    
+    // Set up real-time subscription for articles
+    const channel = supabase
+      .channel('articles_changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'articles'
+        },
+        (payload) => {
+          console.log('Article change detected:', payload);
+          // Refresh articles when any change occurs
+          fetchArticles();
+        }
+      )
+      .subscribe();
+    
+    // Cleanup subscription on unmount
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, []);
 
   // Handle form submission
@@ -92,7 +115,11 @@ export const ArticleManager: React.FC = () => {
       setFormData({ title: '', content: '', is_published: true });
       setShowForm(false);
       setEditingArticle(null);
-      await fetchArticles();
+      
+      // Force refresh articles with a small delay to ensure DB sync
+      setTimeout(async () => {
+        await fetchArticles();
+      }, 100);
     } catch (error) {
       console.error('Error saving article:', error);
       alert('Error saving article. Please try again.');

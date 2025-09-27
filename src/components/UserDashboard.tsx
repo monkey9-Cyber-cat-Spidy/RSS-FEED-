@@ -99,6 +99,47 @@ export const UserDashboard: React.FC = () => {
     };
 
     loadData();
+    
+    if (user) {
+      // Set up real-time subscriptions
+      const articlesChannel = supabase
+        .channel('user_articles_changes')
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'articles',
+            filter: 'is_published=eq.true'
+          },
+          () => {
+            fetchArticles();
+          }
+        )
+        .subscribe();
+      
+      const notificationsChannel = supabase
+        .channel('user_notifications_changes')
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'notifications',
+            filter: `user_id=eq.${user.id}`
+          },
+          () => {
+            fetchNotifications();
+          }
+        )
+        .subscribe();
+      
+      // Cleanup subscriptions
+      return () => {
+        supabase.removeChannel(articlesChannel);
+        supabase.removeChannel(notificationsChannel);
+      };
+    }
   }, [user]);
 
   // Toggle subscription
