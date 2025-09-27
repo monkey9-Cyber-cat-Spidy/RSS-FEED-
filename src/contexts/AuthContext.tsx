@@ -71,7 +71,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }
 
   const signOut = async () => {
-    const { error } = await supabase.auth.signOut()
+    await supabase.auth.signOut()
     // Don't manually set states here, let the auth state change handler do it
   }
 
