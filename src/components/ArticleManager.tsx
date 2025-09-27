@@ -38,7 +38,7 @@ export const ArticleManager: React.FC = () => {
           *,
           user_profiles (display_name, email)
         `)
-        .order('created_at', { ascending: false });
+        .order('updated_at', { ascending: false });
 
       if (error) throw error;
       setArticles(data || []);
