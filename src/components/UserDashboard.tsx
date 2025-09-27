@@ -179,9 +179,10 @@ export const UserDashboard: React.FC = () => {
           await Notification.requestPermission();
         }
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error toggling subscription:', error);
-      alert('Error updating subscription. Please try again.');
+      const message = (error && (error.message || error.error_description)) ? (error.message || error.error_description) : 'Error updating subscription. Please try again.';
+      alert(message);
     }
   };
 

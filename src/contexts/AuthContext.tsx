@@ -49,6 +49,36 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }
 
+  // Ensure a user_profiles row exists for the authenticated user (needed for FK on subscriptions)
+  const ensureUserProfile = async (u: User): Promise<UserProfile | null> => {
+    try {
+      // Try to upsert a minimal profile; onConflict by id guarantees id/email uniqueness
+      const email = u.email ?? ''
+      const fallback = (email && email.includes('@')) ? email.split('@')[0] : (u.user_metadata?.username || 'user')
+      const display = u.user_metadata?.display_name || fallback
+
+      const { data, error } = await supabase
+        .from('user_profiles')
+        .upsert({
+          id: u.id,
+          email,
+          username: u.user_metadata?.username || fallback,
+          display_name: display,
+        }, { onConflict: 'id' })
+        .select('*')
+        .single()
+
+      if (error) {
+        console.error('Error ensuring user profile:', error)
+        return null
+      }
+      return data
+    } catch (e) {
+      console.error('Unexpected error ensuring user profile:', e)
+      return null
+    }
+  }
+
   const signUp = async (email: string, password: string, metadata: any = {}) => {
     const { error } = await supabase.auth.signUp({
       email,
@@ -99,10 +129,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
         if (session?.user) {
           try {
-            const p = await fetchUserProfile(session.user.id)
+            let p = await fetchUserProfile(session.user.id)
+            if (!p) {
+              // Attempt to create the missing profile so FK constraints on subscriptions won't fail
+              p = await ensureUserProfile(session.user)
+            }
             if (isMounted) setProfile(p)
           } catch (e) {
-            console.error('Error loading user profile during init:', e)
+            console.error('Error loading/ensuring user profile during init:', e)
           }
         }
       } catch (e) {
@@ -124,10 +158,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       if (session?.user) {
         try {
-          const userProfile = await fetchUserProfile(session.user.id)
+          let userProfile = await fetchUserProfile(session.user.id)
+          if (!userProfile) {
+            userProfile = await ensureUserProfile(session.user)
+          }
           setProfile(userProfile)
         } catch (e) {
-          console.error('Error loading user profile after auth change:', e)
+          console.error('Error loading/ensuring user profile after auth change:', e)
           setProfile(null)
         }
       } else {
