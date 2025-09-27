@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
-import type { Article, Subscription, Notification } from '../lib/supabase';
+import type { Subscription, Notification } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { generateRssAndDownload } from '../utils/rss';
 
